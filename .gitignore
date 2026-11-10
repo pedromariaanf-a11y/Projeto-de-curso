@@ -1,2 +1,26 @@
-# Ignore datasets
+# Datasets and local snapshots (keep large data out of Git)
 data/
+
+# Secrets — never commit real credentials (.env.example IS committed)
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+
+# Python / uv
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
