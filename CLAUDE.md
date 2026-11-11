@@ -1,109 +1,107 @@
 # SecondsMatter — Instructions for Claude Code
 
-## 1. Project overview
+## 1. Project
 
-SecondsMatter is a 2026/2027 NOVA IMS BSc Data Science Capstone Project developed by a four-person team. It is an **AI-powered decision-support prototype for emergency resource planning and dispatch**.
+SecondsMatter is a NOVA IMS BSc Data Science Capstone Project (2026/2027, four-person team): an **AI-powered decision-support prototype for emergency resource planning and dispatch**. Users explore emergency demand, inspect simulated resource availability, compare dispatch options by estimated travel time and remaining coverage, and ask follow-up or hypothetical questions to a conversational agent. Planning (demand forecasting, relocations) comes only after a complete, reliable dispatch MVP.
 
-The application should allow users to explore emergency demand, inspect simulated resource availability, compare dispatch options using estimated travel time and remaining geographic coverage, and ask follow-up or hypothetical questions through a conversational AI agent. The original concept includes both **planning** (forecasting demand, analysing coverage, considering relocations) and **dispatch** (comparing resources for an incoming incident). Prioritise a complete, reliable MVP before adding advanced functionality.
+**Safety boundary:** this is an academic simulation, **not a real dispatch system**. It must not send real dispatch instructions, determine clinical priority, claim operational readiness, or present synthetic results as real-world performance. A human stays in control of every simulated decision, and simulated information is labelled as such.
 
-**Safety boundary:** This is an academic simulation and research prototype, **not a real emergency dispatch system**. It must not send real dispatch instructions, determine clinical priority, claim operational readiness, or present synthetic results as verified real-world performance. Keep a human in control of simulated decisions and label simulated information clearly.
+## 2. Course rules and deadlines
 
-## 2. Source of truth and deadlines
+The course documents in `docs/reference/` take precedence over this file: `Project_Guidelines.pdf`, `Technical_Proposal_Guidelines.pdf`, `Proposal_Week_03.pdf` and the team's initial `SecondsMatter_Proposal.pdf`, which is a starting concept, not a commitment. `README_TEMPLATE.md` is referenced by the guidelines but not yet in the repo. Do not invent requirements or assume instructor approval; ask the team when unsure.
 
-The official course guidelines take precedence over this file. Course documents live in `docs/reference/`: `Project_Guidelines.pdf` (official guidelines) and `SecondsMatter_Proposal.pdf` (initial proposal). Read them before making architectural or scope decisions. The guidelines also refer to `PROPOSAL_WEEK_03.md`, `TECHNICAL_PROPOSAL_GUIDELINES.md` and `README_TEMPLATE.md`; if these are absent, ask the team to provide them when a requirement is uncertain. The initial proposal describes the starting concept, **not an immutable feature commitment**. Do not invent course requirements or assume something has been approved by the instructor.
+- **Technical proposal, 6 Dec 2026, 23:59:** one PDF named `TeamName_TechnicalProposal.pdf`, with the 10 sections of the guidelines in order. It contains no code and no placeholder sections. The final delivery is compared with its section 7 (scope) and section 8 (plan), so commit only to what can be built.
+- **Final submission, 3 Jan 2027, 23:59:** late penalties (out of 20) are −2, −5 and −9 points for days 1–3; after that it is not accepted.
+  - Only the **default branch** counts.
+  - `mb-cardoso` must be a collaborator on the repository.
+  - Moodle gets the same code as `TeamName_FinalProject.zip`.
+  - The README gives the public URL.
+- **Defence:** an investor-style pitch and live demo, then technical questions to any member about any part of the code, including AI-written code.
+- Technical choices outside what is taught in class need the instructor's agreement **before** building on them.
 
-- **Technical proposal:** 6 December 2026, 23:59 (problem and solution, member roles, technical blueprint with architecture diagram, realistic scope and timeline). Assessed later against what is delivered, so commit only to what can be built.
-- **Final submission:** 3 January 2027, 23:59. Late penalties (out of 20): −2 / −5 / −9 points for days 1–3, then not accepted.
-- The final application must run at a **public URL** and be demonstrable during the defence.
-- All four team members must be able to explain the entire application, including AI-generated code.
+## 3. Required components and acceptance checks
 
-**Submission logistics (from the guidelines):**
+1. **AI integration:** the model does real work. Any output the code acts on comes back as validated structured output, never parsed text.
+2. **Conversational agent:** a multi-turn conversation that uses earlier context. The agent **chooses** tools and chains calls; a fixed code-driven workflow does not count.
+3. **Tools:** team-written functions that read or change app state, each documented in `docs/TOOLS.md` (purpose, parameters, return value, failures). Failures return a result the agent can act on. Safe transient failures are retried. A tool that deletes or overwrites asks the user first unless the change can be undone.
+4. **Documents:** user-provided documents (e.g., operational rules as PDF or text) are used meaningfully, with attribution. An upload control that does nothing does not count.
+5. **Layered architecture:** interface, logic, AI provider access, tools, configuration, prompts and schemas are kept apart. The interface never builds prompts or makes decisions, and changing the model means editing one line.
+6. **Tracing:** one trace per user request, including in the deployed app, with a span for every model and tool call. Each trace shows the model, latency, tokens, errors and handled failures, the outcome and the conversation ID. Document whether prompts and responses are logged and how long traces are kept. The team must be able to open the trace of a failure it found and show what it changed because of it.
 
-- Only the repository's **default branch** counts; work on other branches or committed after the deadline is not part of the submission / is late.
-- GitHub user `mb-cardoso` must be a collaborator on the repository.
-- Moodle: the same code as a zip named `TeamName_FinalProject.zip`.
-- `README.md` follows `README_TEMPLATE.md` (or equivalent), with setup that works on a fresh clone, the deployment note and public URL, and credits for any code taken from other projects.
-- Any technical choice outside what is taught in class must be agreed with the instructor **before** building on it.
-- Defence: investor-style pitch + live demo, then technical questions to any member about any part of the code.
-- Tracing must let the team open the trace of a failure it found and show what it changed because of it.
-- The 10–20 case evaluation set is *recommended* by the course; this team treats it as required.
+**Compliance:** tell users they are interacting with AI (EU AI Act Art. 50), process no identifiable patient data, and follow GDPR and the providers' terms.
 
-## 3. Mandatory course requirements
+**Evaluation set:** 10–20 cases with expected outputs, scored by a script and rerun after every prompt or model change. The course only recommends it; this team treats it as required.
 
-Design and implement **all six** required components:
+**Deliverables:**
+- `README.md`: setup from a fresh clone, run instructions, deployment, limitations, credits.
+- `docs/ARCHITECTURE.md`: the layers, data flows and trade-offs.
+- `docs/TOOLS.md`
+- `.env.example`
+- the lockfile
+- tests
 
-1. **AI integration:** A model performs meaningful application work under prompts and system instructions. Outputs used by code must follow a validated structured schema, not brittle text parsing.
-2. **Conversational agent:** The user can hold a multi-turn conversation; the agent uses prior context, **chooses** the application's tools, and can chain tool calls. A fixed code-driven workflow alone is insufficient.
-3. **Custom tools:** The agent invokes team-written functions that read or change application state. Document each tool's purpose, parameters, returns, and failures in `docs/TOOLS.md`. Return recoverable errors to the agent; retry only safe transient failures; obtain confirmation before non-undoable destructive changes.
-4. **Document use:** Users can provide relevant documents (for example, PDF or text operational rules for the simulation), and the application uses their contents meaningfully, with clear attribution when appropriate. Document processing cannot be a decorative upload control.
-5. **Layered architecture:** Separate interface, application logic, AI provider access, tools, configuration, prompts, and schemas. The interface must not build prompts or own decision logic. Switching models should be a small, centralised configuration change.
-6. **Tracing:** Produce one trace per user request, with spans for model and tool calls, model identity, latency, token use, errors/handled failures, request outcome, and conversation association. Include the deployed app. Decide and document whether prompts/responses are logged and how long traces are retained.
+**Before submitting:** clone into an empty folder and follow the README.
 
-Also disclose that users interact with AI, avoid processing identifiable patient data, and follow applicable GDPR, AI Act, and service-provider requirements. Create a small **10–20 case** agent evaluation set and rerun it after meaningful prompt/model changes.
+## 4. Data
 
-## 4. Data strategy and known limitations
+- Source: DataSF dataset `nuek-vuh3`, SF Fire Department and EMS Dispatched Calls for Service (`https://data.sf.gov/resource/nuek-vuh3.json`).
+- Rows are **unit responses**, not incidents. A January 2025 audit found 33,196 response rows for 16,374 incidents. **Never count response rows as demand**: deduplicate at incident level, and keep a separate response table for resource analysis.
+- `MEDIC`, `BLS` and `PRIVATE` are candidate ambulance types; their eligibility is unverified. In the January 2025 data, of 12,697 such rows one lacked `available_dttm` and 85 had negative dispatch-to-available durations. These findings are period-specific, so validate chronology and coverage before modelling.
+- Incident coordinates are not vehicle GPS positions. The data does not show full rosters, shifts or availability.
+- Keep **observed facts**, **derived estimates** and **synthetic assumptions** separate in data, API responses, UI and evaluation.
+- Use reproducible, date-scoped API extracts saved as local snapshots, never a full download at app startup. Record the source, extraction date, filters, transformations and quality checks. Data files stay out of Git (`data/`).
+- San Francisco patterns do not transfer to Lisbon. A Lisbon scenario must be labelled as an assumption-driven demonstration.
 
-- Main candidate source: San Francisco Fire Department and EMS Dispatched Calls for Service, DataSF dataset `nuek-vuh3`.
-- API endpoint: `https://data.sf.gov/resource/nuek-vuh3.json`.
-- A preliminary January 2025 audit retrieved **33,196 unit-response rows** and **16,374 distinct incident IDs**. There are multiple responses per incident; **never count response rows as incident demand**.
-- `unit_id`, `unit_type`, `received_dttm`, `dispatch_dttm`, `available_dttm`, and `case_location` were observed. `MEDIC`, `BLS`, and `PRIVATE` are candidate ambulance-related unit types, but operational eligibility must be verified.
-- Of 12,697 candidate ambulance-related response rows in that month, one lacked `available_dttm` and 85 had negative dispatch-to-availability durations. These findings are **preliminary, period-specific**, not general guarantees of quality.
-- Public incident coordinates are not full historical vehicle GPS positions. The dataset does **not** establish complete fleet rosters, shifts, or vehicle availability outside recorded assignments.
-- Separate **observed historical facts**, **derived estimates**, and **synthetic simulation assumptions** in the data model, API responses, UI, and evaluation.
-- For demand modelling, deduplicate at incident level. Preserve a separate response/assignment table for resource analysis. Validate timestamp chronology and geographic coverage before fitting models.
-- Fetch reproducible, date-scoped API batches; do not download the full dataset on app startup. Cache or snapshot modelling data locally for repeatable testing. Record source, extraction date, date filters, transformations, and quality checks. Keep large data files out of Git.
-- Do **not** assume San Francisco patterns transfer directly to Lisbon. A Lisbon scenario would be a separately labelled, assumption-driven demonstration unless suitable local data becomes available.
+## 5. MVP and stack
 
-## 5. Recommended MVP and implementation choices
+Build one end-to-end interaction first:
+1. The user describes a simulated emergency.
+2. The agent calls tools to inspect available units and compare them.
+3. Deterministic Python computes eligibility, ETA and coverage impact; the LLM never invents these figures.
+4. The agent presents the options with their assumptions.
+5. In a follow-up ("unit X is unavailable"), the agent keeps the context and updates the result.
+6. In a relevant scenario, the agent consults an uploaded rules document.
 
-Build **one complete end-to-end interaction** first:
+Use simple baselines before any optimisation.
 
-1. A user describes a simulated emergency and asks which eligible resource to dispatch.
-2. The agent calls tools to inspect simulated available units and compare alternatives.
-3. Deterministic Python code calculates eligibility, estimated arrival time, and coverage impact; the LLM does **not** invent these figures.
-4. The agent presents clear options with assumptions and limitations.
-5. In a follow-up, the user changes an assumption (e.g., a unit becomes unavailable); the agent retains context, calls the relevant tools, and explains the updated result.
-6. The agent can consult a user-provided operational-rules document in a relevant scenario.
+**Stack:**
+- Python 3.12, `uv` with exact pins and a committed `uv.lock`, Streamlit.
+- Anthropic Python SDK, isolated in one layer. The model ID is `LLM_MODEL` in `src/secondsmatter/config.py`.
+- Langfuse Cloud EU for tracing (planned).
+- pandas and Parquet for data; SQLite only if persistent state is needed.
+- Deployment on Streamlit Community Cloud, with `streamlit_app.py` as the entrypoint.
 
-Implement planning-mode demand forecasting and relocation recommendations incrementally after the essential agent, tools, simulation, document handling, tracing, and deployment work. Use simple baselines before more advanced optimisation. Do not promise more in the technical proposal than can be delivered and defended.
+Add a dependency only when a feature uses it. Avoid unneeded frameworks and infrastructure. The demo must not depend on a live external data request.
 
-**Preferred stack (unless an existing repository decision or justified alternative suggests otherwise):**
+## 6. Repository layout and commands
 
-- Python backend, Streamlit interface.
-- Anthropic's **current** Python SDK for the application LLM; keep provider-specific code isolated. Claude Code is the development assistant, not automatically the runtime API.
-- Langfuse Cloud EU for tracing (or a justified equivalent).
-- `uv` with a committed lockfile and exactly pinned dependencies.
-- Pandas and Parquet for data preparation; SQLite only when persistent application state is needed.
-- Mapping and routing libraries only when a tested use case requires them.
-- Public deployment early, preferably Streamlit Community Cloud.
+The repository root holds only these files: `README.md`, `CLAUDE.md`, `streamlit_app.py`, `pyproject.toml`, `uv.lock`, `.env.example` and `.gitignore`. Everything else lives in a folder:
 
-Avoid unnecessary frameworks, speculative dependencies, and complex infrastructure. Never rely on a live external data request for the core demonstration if a reproducible local snapshot can be used.
+| Folder | Contents |
+|---|---|
+| `src/secondsmatter/` | Application code |
+| `tests/` | Tests |
+| `notebooks/` | Exploration only; reusable code moves to `src/` |
+| `docs/` | Project docs; course documents in `docs/reference/` |
+| `data/` | Local only, not in Git |
 
-## 6. Codebase and collaboration rules
+Do not create empty placeholder files or folders. Add a module only when a feature needs it, and announce every new file.
 
-Before making changes:
+```bash
+uv sync                                  # create/update .venv (local only, not in Git)
+uv run streamlit run streamlit_app.py    # run the app
+uv run pytest                            # run the tests
+```
 
-- Inspect the existing repository, docs, and tests. **Do not assume files or features exist.**
-- Explain briefly what you plan to change and why; implement the smallest useful increment.
-- Preserve existing functioning behaviour unless a change is explicitly requested.
-- Place reusable implementation in `src/` modules rather than copying logic between notebooks and the UI.
-- Keep tool contracts typed and documented. Validate inputs, handle failures explicitly, and write tests for critical deterministic calculations.
-- Use environment variables for credentials; maintain `.env.example` with variable names only. **Never commit secrets or `.env` files.**
-- Keep datasets, caches, generated model artefacts, and large exports out of Git unless deliberately approved.
-- Do not run destructive shell commands, create paid resources, trigger large downloads, or commit/push without explicit approval.
-- Whenever you finish a change, state which files changed, how to run/test it, what was verified, and any known limitations.
-- Prefer readable and explainable code over clever abstractions. The entire team must be able to defend every choice.
+## 7. Working rules
 
-## 7. Documentation and acceptance checks
+- **Git:** commit directly to `main`. No feature branches, pull requests or colleague review are required. Pull before starting, and write short commit messages in English. Claude asks the user in chat before committing or pushing.
+- **Language:** code, docs and commit messages are in English. When a team member writes in Portuguese, reply in Portuguese.
+- Inspect the repo before changing it, and don't assume files exist. Explain the plan briefly, then make the smallest useful increment without breaking working behaviour.
+- Typed, documented tool contracts; validated inputs; explicit failure handling; tests for deterministic calculations.
+- Credentials come from environment variables, and `.env.example` lists names only. **Never commit secrets or `.env`.**
+- No destructive commands, paid resources or large downloads without explicit approval.
+- After each change, report which files changed, how to run or test them, what was verified, and the known limitations.
+- Prefer readable, explainable code. Every member must be able to defend every line.
 
-Maintain these deliverables as the project evolves:
-
-- `README.md` — purpose, setup from a fresh clone, how to run, deployment URL and deployment process, limitations, third-party credits.
-- `docs/ARCHITECTURE.md` — layers, data flows, component choices, and trade-offs.
-- `docs/TOOLS.md` — every agent tool's purpose, parameters, outputs, failures, and side effects.
-- `.env.example` — required environment variables, with no values or secrets.
-- Reproducible dependency lockfile; tests and agent evaluation cases.
-
-Before final submission, verify: multi-turn tool selection/chaining, meaningful document use, structured outputs, safe tool failure handling, complete per-request tracing in deployment, reproducible data preparation, clear simulated-data disclosures, public accessibility, and setup from a fresh repository clone. Follow the official GitHub/Moodle submission instructions and deadlines.
-
-**Guiding principle: A small, complete, deployed, well-tested AI application is better than an ambitious but broken one.**
+**A small, complete, deployed, well-tested application beats an ambitious broken one.**
