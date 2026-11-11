@@ -95,3 +95,47 @@ The skeleton is deployed. **None of the six required components is implemented y
 ## Next recommended step
 
 **Reproducible data extract (task 1).** The agent's tools need real incident and unit data, and `CLAUDE.md` requires date-scoped, reproducible snapshots kept out of Git. It is the base for steps 2–4.
+
+### Agreed design (2026-11-11)
+
+**Decisions**
+- First snapshot: all of 2025 (369,089 response rows, 183,325 incidents). The year is a parameter.
+- Ambulances: `MEDIC`, `BLS` and `PRIVATE`, flagged as an *assumption*; the care level comes from the observed `als_unit` column.
+- Deployment: raw data and full tables stay local. Only small summary tables that the app reads will be committed; their content is designed in task 2 (simulation), with a one-line exception added to `CLAUDE.md` then.
+- Two stages (download, then build) so that a cleaning change never forces a new download.
+
+**Files**
+- Code: `src/secondsmatter/data.py`, with `download(year)`, `make_tables(raw)` (pure function) and `build_tables(year)`.
+- Tests: `tests/test_data.py`.
+- Dependencies: `pandas`, `pyarrow` and `requests` become direct dependencies, pinned to the versions already in `uv.lock`.
+- Command: `uv run python -m secondsmatter.data 2025`. It downloads only if the raw file is missing, then builds.
+- Local outputs (not in Git): `data/sf_ems_2025_raw.parquet`, `data/sf_ems_2025_info.json`, `data/incidents_2025.parquet`, `data/responses_2025.parquet`.
+
+**`download(year)`**
+1. Count the year's rows with one API query.
+2. Fetch them in pages of 50,000, ordered by `rowid`, with an explicit list of 24 columns. The street address is left out.
+3. Retry timeouts and "server busy" errors up to 3 times.
+4. If the fetched row count differs from the count, stop and save nothing.
+5. Save the rows as received (text) and an info JSON: source URL, filter, columns, extraction time and the latest `data_as_of`.
+
+**`make_tables(raw)`**
+- `responses` has one row per unit sent: the IDs, the parsed times, `als_unit` (observed), `is_ambulance` (assumption), and minutes from dispatch to on scene and from dispatch to available (derived).
+- `incidents` has one row per incident: received time, call type and group, final priority, station area, neighbourhood, coordinates, units sent and ambulances sent.
+- Negative durations become empty values and are counted. Times stay in local San Francisco time.
+- Quality checks are added to the info JSON:
+  - row and incident counts, and that `rowid` is unique
+  - missing coordinates, unit types and "available" times
+  - negative durations
+  - incidents whose details differ between their rows
+
+**Errors**
+- Network failure after the retries, or a count mismatch: stop with a clear message and save nothing.
+- A missing expected column: stop with an error that names the column.
+- An unreadable time: it becomes empty and is counted.
+
+**Tests (offline)**
+- `make_tables` on about 6 hand-written rows: incident/response counts, the ambulance flag, durations, and the negative and missing-value counts.
+- `download` with a fake connection: pages are joined, a "server busy" error is retried, and a count mismatch writes no file.
+- The real 2025 run is checked by hand against the API counts above.
+
+**After it works:** update the README "Data" section with the command, the source and the meaning of the two tables.
