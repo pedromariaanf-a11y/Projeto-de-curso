@@ -18,10 +18,13 @@ class Settings:
     has_api_key: bool
 
 
-def get_settings(load_env_file: bool = True) -> Settings:
-    """Build settings from the environment (optionally loading `.env` first)."""
-    if load_env_file:
-        load_dotenv()
+def get_settings() -> Settings:
+    """Build settings from the environment, after loading a local `.env` if present.
+
+    `load_dotenv` never overrides variables that are already set, so values from
+    Streamlit Secrets (or set by tests) always win over the `.env` file.
+    """
+    load_dotenv()
     return Settings(
         llm_model=LLM_MODEL,
         has_api_key=bool(os.environ.get("ANTHROPIC_API_KEY", "").strip()),
