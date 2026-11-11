@@ -6,6 +6,7 @@ Times are kept as local San Francisco time without a time zone, as the source
 gives them.
 """
 
+import argparse
 import json
 import time
 from datetime import datetime, timezone
@@ -201,3 +202,41 @@ def make_tables(raw: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
         "incidents_with_conflicting_details": conflicting,
     }
     return incidents, responses, quality
+
+
+def build_tables(year: int, data_dir: Path = DATA_DIR) -> dict:
+    """Raw file -> incidents and responses Parquet files; quality saved in the info file."""
+    raw_path = data_dir / f"sf_ems_{year}_raw.parquet"
+    if not raw_path.exists():
+        raise FileNotFoundError(f"{raw_path} not found; download the data first")
+
+    incidents, responses, quality = make_tables(pd.read_parquet(raw_path))
+    incidents.to_parquet(data_dir / f"incidents_{year}.parquet", index=False)
+    responses.to_parquet(data_dir / f"responses_{year}.parquet", index=False)
+
+    info_path = data_dir / f"sf_ems_{year}_info.json"
+    info = json.loads(info_path.read_text(encoding="utf-8")) if info_path.exists() else {}
+    info["quality"] = quality
+    info_path.write_text(json.dumps(info, indent=2), encoding="utf-8")
+    return quality
+
+
+def main(argv: list[str] | None = None) -> None:
+    """Command line: `uv run python -m secondsmatter.data 2025`."""
+    parser = argparse.ArgumentParser(
+        description="Download one year of DataSF records (if needed) and build the tables."
+    )
+    parser.add_argument("year", type=int, help="calendar year, e.g. 2025")
+    year = parser.parse_args(argv).year
+
+    raw_path = DATA_DIR / f"sf_ems_{year}_raw.parquet"
+    if raw_path.exists():
+        print(f"Using {raw_path} (delete it to download fresh data)")
+    else:
+        download(year)
+    quality = build_tables(year)
+    print(json.dumps(quality, indent=2))
+
+
+if __name__ == "__main__":
+    main()

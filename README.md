@@ -58,6 +58,27 @@ San Francisco Fire Department and EMS Dispatched Calls for Service
 ([DataSF `nuek-vuh3`](https://data.sf.gov/resource/nuek-vuh3.json)). Data files are kept
 out of Git in `data/`.
 
+Build the local data for one year (downloads once, a few minutes, then reuses the file):
+
+```bash
+uv run python -m secondsmatter.data 2025
+```
+
+This filters on `received_dttm` within the calendar year, requests a fixed list of 24 columns
+(no street address), and writes to `data/`:
+
+| File | Contents |
+|---|---|
+| `sf_ems_2025_raw.parquet` | The rows exactly as the API returned them (text) |
+| `sf_ems_2025_info.json` | Source, filter, columns, extraction time, latest `data_as_of`, quality checks |
+| `responses_2025.parquet` | One row per **unit sent**: times, unit type, durations in minutes |
+| `incidents_2025.parquet` | One row per **incident** (demand): call type, location, units and ambulances sent |
+
+Source rows are unit responses, so demand is counted in `incidents`, never in `responses`.
+Times are local San Francisco time without a time zone. `is_ambulance` (unit types `MEDIC`,
+`BLS`, `PRIVATE`) is a project assumption; `als_unit` is observed in the source. The dataset
+is updated daily, so delete the raw file and rerun to get fresher data.
+
 ## Deployment
 
 Deployed on Streamlit Community Cloud from the `main` branch, with `streamlit_app.py` as

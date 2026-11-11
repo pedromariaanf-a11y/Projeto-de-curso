@@ -1,6 +1,6 @@
 # Development Status
 
-_Last updated: 2026-11-11 (after the repository audit). Update this file whenever a step is finished._
+_Last updated: 2026-11-11 (after the 2025 data extract). Update this file whenever a step is finished._
 
 Only work that can be checked in the repository is listed as done.
 
@@ -18,7 +18,7 @@ Only work that can be checked in the repository is listed as done.
   - `.gitignore` excludes `.env`, `.venv/` and `data/`.
   - The root contains only the essential files.
 - **Packaging**
-  - The `uv` project uses Python 3.12, with exact pins (`streamlit==1.67.0`, `python-dotenv==1.2.4`, and `pytest==9.2.0` for development) and a committed `uv.lock`.
+  - The `uv` project uses Python 3.12, with exact pins (`streamlit==1.67.0`, `python-dotenv==1.2.4`, `pandas==3.1.1`, `pyarrow==26.0.1`, `requests==2.34.2`, and `pytest==9.2.0` for development) and a committed `uv.lock`.
 - **Configuration layer** (`src/secondsmatter/config.py`)
   - Settings are read from environment variables.
   - The model ID is set in one line (`LLM_MODEL = "claude-opus-5-5"`).
@@ -27,8 +27,10 @@ Only work that can be checked in the repository is listed as done.
   - The page shows the AI-interaction disclosure (EU AI Act Art. 50) and the "academic simulation only" warning.
   - The sidebar shows the model and whether the key is configured.
   - The chat input is disabled.
-- **Tests** (`tests/test_config.py`)
-  - 2 tests for the configuration; both pass with `uv run pytest`.
+- **Tests**
+  - `tests/test_config.py`: 2 tests for the configuration.
+  - `tests/test_data.py`: 4 offline tests for the data layer.
+  - All 6 pass with `uv run pytest`.
 - **Deployment**
   - The app is public at https://secondsmatter.streamlit.app/ (Streamlit Community Cloud, `main` branch, Python 3.12).
   - Every push to `main` redeploys it.
@@ -41,8 +43,11 @@ Only work that can be checked in the repository is listed as done.
   - The dataset is live and updated daily: 7,494,957 rows, `data_as_of` 2026-11-11. A snapshot must record its extraction date and `data_as_of`.
   - The API returns 36 or 37 columns depending on the query (the `:@computed_region_…` column can be missing), so an extract needs an explicit column list.
   - Timestamps are local San Francisco time without a time zone; daylight-saving changes (March, November) need care.
+- **Data extract** (`src/secondsmatter/data.py`, run with `uv run python -m secondsmatter.data 2025`)
+  - 2025 snapshot (extracted 2026-11-11): 369,089 response rows, 183,325 incidents, matching the API. Quality results are in `data/sf_ems_2025_info.json`.
+  - Ambulances (assumption: `MEDIC`, `BLS`, `PRIVATE`): 124 units; median 8.2 min from dispatch to on scene, 70.2 min busy.
 - **Docs**
-  - `README.md` covers setup, run, test, the project layout and the public URL.
+  - `README.md` covers setup, run, test, the project layout, the public URL and how to build the data.
   - `CLAUDE.md` holds the project rules and the teaching-mode working style.
 
 ## Current status
@@ -55,20 +60,19 @@ The skeleton is deployed. **None of the six required components is implemented y
 | 2. Conversational agent | Not started: chat input disabled |
 | 3. Tools + `docs/TOOLS.md` | Not started |
 | 4. Documents | Not started |
-| 5. Layered architecture | Started: separate config and interface layers |
+| 5. Layered architecture | Started: separate config, data and interface layers |
 | 6. Tracing | Not started |
 | Evaluation set (10–20 cases) | Not started |
 | `docs/ARCHITECTURE.md` | Not started |
 
 ## Pending tasks (priority order)
 
-1. **Reproducible data extract:** move the notebook logic into `src/`, fetch a date-scoped API batch, and save it as a local snapshot. Build separate incident and response tables, with tests.
-2. **Simulation:** a synthetic fleet, plus deterministic eligibility, ETA and coverage calculations, with tests.
-3. **Agent:** an Anthropic SDK tool loop with the first tools and structured outputs.
-4. **Tracing:** Langfuse spans for model and tool calls, from the first agent interaction.
-5. **Document use:** an uploaded operational-rules document that the agent consults.
-6. **Documentation:** `docs/TOOLS.md`, `docs/ARCHITECTURE.md`, and the evaluation set with a scoring script.
-7. **Technical proposal:** write it in parallel; due 6 Dec.
+1. **Simulation:** a synthetic fleet, plus deterministic eligibility, ETA and coverage calculations, with tests.
+2. **Agent:** an Anthropic SDK tool loop with the first tools and structured outputs.
+3. **Tracing:** Langfuse spans for model and tool calls, from the first agent interaction.
+4. **Document use:** an uploaded operational-rules document that the agent consults.
+5. **Documentation:** `docs/TOOLS.md`, `docs/ARCHITECTURE.md`, and the evaluation set with a scoring script.
+6. **Technical proposal:** write it in parallel; due 6 Dec.
 
 ## Technical decisions
 
@@ -87,55 +91,11 @@ The skeleton is deployed. **None of the six required components is implemented y
 
 - No API key is set on the deployed app, so the sidebar shows "ANTHROPIC_API_KEY is not set". This is expected until the agent exists.
 - `README_TEMPLATE.md`, referenced by the guidelines, is not in the repository.
-- The notebook uses `requests` and `pandas`. They are installed in `.venv` only as indirect dependencies of Streamlit, not as direct, pinned project dependencies. The project environment has no Jupyter kernel (`ipykernel`), and the notebook was run on a personal environment ("PDC"), so it does not run inside the `uv` environment yet.
+- The notebook was run on a personal environment ("PDC"); the project environment has no Jupyter kernel (`ipykernel`). Its logic now lives in `src/secondsmatter/data.py`, so the notebook is kept only as a record of the first exploration.
 - No written instructor feedback on the Week 3 proposal has been received; section 3 of the technical proposal must say so.
-- The data audit covers January 2025 only; its quality findings are not general.
+- Quality findings are for 2025 only; another year must be checked again.
 - The dataset has no fleet rosters, shifts or vehicle GPS positions, so availability will be simulated.
 
 ## Next recommended step
 
-**Reproducible data extract (task 1).** The agent's tools need real incident and unit data, and `CLAUDE.md` requires date-scoped, reproducible snapshots kept out of Git. It is the base for steps 2–4.
-
-### Agreed design (2026-11-11)
-
-**Decisions**
-- First snapshot: all of 2025 (369,089 response rows, 183,325 incidents). The year is a parameter.
-- Ambulances: `MEDIC`, `BLS` and `PRIVATE`, flagged as an *assumption*; the care level comes from the observed `als_unit` column.
-- Deployment: raw data and full tables stay local. Only small summary tables that the app reads will be committed; their content is designed in task 2 (simulation), with a one-line exception added to `CLAUDE.md` then.
-- Two stages (download, then build) so that a cleaning change never forces a new download.
-
-**Files**
-- Code: `src/secondsmatter/data.py`, with `download(year)`, `make_tables(raw)` (pure function) and `build_tables(year)`.
-- Tests: `tests/test_data.py`.
-- Dependencies: `pandas`, `pyarrow` and `requests` become direct dependencies, pinned to the versions already in `uv.lock`.
-- Command: `uv run python -m secondsmatter.data 2025`. It downloads only if the raw file is missing, then builds.
-- Local outputs (not in Git): `data/sf_ems_2025_raw.parquet`, `data/sf_ems_2025_info.json`, `data/incidents_2025.parquet`, `data/responses_2025.parquet`.
-
-**`download(year)`**
-1. Count the year's rows with one API query.
-2. Fetch them in pages of 50,000, ordered by `rowid`, with an explicit list of 24 columns. The street address is left out.
-3. Retry timeouts and "server busy" errors up to 3 times.
-4. If the fetched row count differs from the count, stop and save nothing.
-5. Save the rows as received (text) and an info JSON: source URL, filter, columns, extraction time and the latest `data_as_of`.
-
-**`make_tables(raw)`**
-- `responses` has one row per unit sent: the IDs, the parsed times, `als_unit` (observed), `is_ambulance` (assumption), and minutes from dispatch to on scene and from dispatch to available (derived).
-- `incidents` has one row per incident: received time, call type and group, final priority, station area, neighbourhood, coordinates, units sent and ambulances sent.
-- Negative durations become empty values and are counted. Times stay in local San Francisco time.
-- Quality checks are added to the info JSON:
-  - row and incident counts, and that `rowid` is unique
-  - missing coordinates, unit types and "available" times
-  - negative durations
-  - incidents whose details differ between their rows
-
-**Errors**
-- Network failure after the retries, or a count mismatch: stop with a clear message and save nothing.
-- A missing expected column: stop with an error that names the column.
-- An unreadable time: it becomes empty and is counted.
-
-**Tests (offline)**
-- `make_tables` on about 6 hand-written rows: incident/response counts, the ambulance flag, durations, and the negative and missing-value counts.
-- `download` with a fake connection: pages are joined, a "server busy" error is retried, and a count mismatch writes no file.
-- The real 2025 run is checked by hand against the API counts above.
-
-**After it works:** update the README "Data" section with the command, the source and the meaning of the two tables.
+**Simulation (task 1).** A synthetic fleet built from the real 2025 ambulance units, plus deterministic eligibility, ETA and coverage calculations, with tests. It also decides which small summary tables the deployed app reads; those are committed, with a one-line exception added to `CLAUDE.md`. The agent's tools (task 2) need these calculations.
