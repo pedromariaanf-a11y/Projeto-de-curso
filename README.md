@@ -9,7 +9,7 @@ NOVA IMS BSc Data Science Capstone Project, 2026/2027.
 
 **Status:** project skeleton. The agent, tools, data pipeline and tracing are not built yet.
 
-**Public URL:** not deployed yet.
+**Public URL:** https://secondsmatter.streamlit.app/
 
 ## Setup from a fresh clone
 
@@ -55,8 +55,10 @@ out of Git in `data/`.
 
 ## Deployment
 
-Planned on Streamlit Community Cloud, with `streamlit_app.py` as the entrypoint and
-secrets set under the app's Secrets settings using the names in `.env.example`.
+Deployed on Streamlit Community Cloud from the `main` branch, with `streamlit_app.py` as
+the entrypoint and Python 3.12 (set under Advanced settings). Dependencies are installed
+from `uv.lock`. Every push to `main` redeploys the app. Secrets are set in the app's
+Secrets settings, using the names in `.env.example`.
 
 ## Credits
 
