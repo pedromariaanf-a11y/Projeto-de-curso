@@ -84,7 +84,6 @@ The skeleton is deployed. **None of the six required components is implemented y
 - The notebook uses `requests` and `pandas`, which are not project dependencies, so it does not run inside the `uv` environment yet.
 - The data audit covers January 2025 only; its quality findings are not general.
 - The dataset has no fleet rosters, shifts or vehicle GPS positions, so availability will be simulated.
-- On one development machine, `uv` could not download its own Python 3.12, and the local Python 3.12 was used instead.
 
 ## Next recommended step
 
