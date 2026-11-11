@@ -1,6 +1,10 @@
-import pandas as pd
+import json
 
-from secondsmatter.data import COLUMNS, make_tables
+import pandas as pd
+import pytest
+
+from secondsmatter import data
+from secondsmatter.data import COLUMNS, download, make_tables
 
 POINT = '{"type": "Point", "coordinates": [-122.4, 37.7]}'
 
@@ -77,3 +81,75 @@ def test_make_tables_quality_report():
         "negative_minutes_busy": 1,
         "incidents_with_conflicting_details": 1,
     }
+
+
+# --- download: a fake connection replaces the internet ---------------------
+
+class FakeResponse:
+    def __init__(self, status_code, body=None):
+        self.status_code = status_code
+        self.body = body
+
+    def json(self):
+        return self.body
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            raise RuntimeError(f"HTTP {self.status_code}")
+
+
+class FakeSession:
+    """Answers each `get` with the next prepared response, and records the params."""
+
+    def __init__(self, responses):
+        self.responses = list(responses)
+        self.calls = []
+
+    def get(self, url, params, timeout):
+        self.calls.append(params)
+        return self.responses.pop(0)
+
+
+def api_row(rowid):
+    """A row as the API sends it: als_unit is a boolean, case_location an object."""
+    return {"rowid": rowid, "als_unit": True,
+            "case_location": {"type": "Point", "coordinates": [-122.4, 37.7]},
+            "data_as_of": "2026-03-11T03:23:01.000"}
+
+
+@pytest.fixture(autouse=True)
+def fast_and_small(monkeypatch):
+    monkeypatch.setattr(data, "RETRY_WAIT_SECONDS", 0)
+    monkeypatch.setattr(data, "PAGE_SIZE", 2)
+
+
+def test_download_joins_pages_and_retries(tmp_path):
+    session = FakeSession([
+        FakeResponse(200, [{"n": "3"}]),                       # count query
+        FakeResponse(503),                                     # server busy -> retry
+        FakeResponse(200, [api_row("a"), api_row("b")]),       # page 1
+        FakeResponse(200, [api_row("c")]),                     # page 2
+    ])
+
+    path = download(2025, data_dir=tmp_path, session=session)
+
+    raw = pd.read_parquet(path)
+    assert raw["rowid"].tolist() == ["a", "b", "c"]
+    assert raw.loc[0, "als_unit"] == "true"          # stored as text
+    assert session.calls[-1]["$offset"] == 2          # second page starts after 2 rows
+    info = json.loads((tmp_path / "sf_ems_2025_info.json").read_text())
+    assert info["rows"] == 3
+    assert info["columns"] == COLUMNS
+
+
+def test_download_count_mismatch_writes_nothing(tmp_path):
+    session = FakeSession([
+        FakeResponse(200, [{"n": "3"}]),                       # API says 3 rows
+        FakeResponse(200, [api_row("a"), api_row("b")]),       # but only 2 arrive
+        FakeResponse(200, []),
+    ])
+
+    with pytest.raises(RuntimeError, match="Expected 3 rows"):
+        download(2025, data_dir=tmp_path, session=session)
+
+    assert list(tmp_path.iterdir()) == []

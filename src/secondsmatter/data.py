@@ -7,10 +7,19 @@ gives them.
 """
 
 import json
+import time
+from datetime import datetime, timezone
+from pathlib import Path
 
 import pandas as pd
+import requests
 
 API_URL = "https://data.sf.gov/resource/nuek-vuh3.json"
+DATA_DIR = Path("data")
+PAGE_SIZE = 50_000
+MAX_ATTEMPTS = 3
+RETRY_WAIT_SECONDS = 2
+RETRY_STATUS = {429, 500, 502, 503, 504}  # "too many requests" and server errors
 
 # The columns requested from the API. A fixed list, because the API's own
 # column set varies between queries. The street address is left out on purpose.
@@ -27,6 +36,82 @@ TIME_COLUMNS = [c for c in COLUMNS if c.endswith("_dttm")]
 
 # ASSUMPTION (not verified): the unit types we treat as dispatchable ambulances.
 AMBULANCE_TYPES = ("MEDIC", "BLS", "PRIVATE")
+
+
+def _get_json(session, params: dict) -> list[dict]:
+    """One API request, retried when the failure is temporary and safe to repeat."""
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        try:
+            response = session.get(API_URL, params=params, timeout=120)
+            if response.status_code not in RETRY_STATUS:
+                response.raise_for_status()  # other errors (e.g. a bad query) stop at once
+                return response.json()
+        except (requests.Timeout, requests.ConnectionError):
+            pass
+        if attempt < MAX_ATTEMPTS:
+            time.sleep(RETRY_WAIT_SECONDS * attempt)
+    raise RuntimeError(f"DataSF did not respond after {MAX_ATTEMPTS} attempts")
+
+
+def _as_text(value):
+    """Store every raw value as text; booleans and objects become JSON text."""
+    if value is None or isinstance(value, str):
+        return value
+    return json.dumps(value)
+
+
+def download(year: int, data_dir: Path = DATA_DIR, session=None) -> Path:
+    """Download one year of DataSF rows and save them unchanged, plus an info file.
+
+    Files are written only when every row arrived, so a failed download leaves
+    nothing behind. Returns the path of the raw Parquet file.
+    """
+    session = session or requests.Session()
+    where = (
+        f"received_dttm >= '{year}-01-01T00:00:00' "
+        f"AND received_dttm < '{year + 1}-01-01T00:00:00'"
+    )
+
+    expected = int(_get_json(session, {"$select": "count(*) as n", "$where": where})[0]["n"])
+    if expected == 0:
+        raise RuntimeError(f"No rows found for {year}")
+
+    rows = []
+    while len(rows) < expected:
+        page = _get_json(session, {
+            "$select": ",".join(COLUMNS),
+            "$where": where,
+            "$order": "rowid",  # a stable order, so pages never overlap or skip rows
+            "$limit": PAGE_SIZE,
+            "$offset": len(rows),
+        })
+        if not page:
+            break
+        rows.extend(page)
+        print(f"Downloaded {len(rows):,} of {expected:,} rows")
+
+    if len(rows) != expected:
+        raise RuntimeError(
+            f"Expected {expected} rows for {year} but received {len(rows)}. "
+            "The source may have changed during the download; run it again."
+        )
+
+    raw = pd.DataFrame([{c: _as_text(row.get(c)) for c in COLUMNS} for row in rows])
+    data_dir.mkdir(parents=True, exist_ok=True)
+    raw_path = data_dir / f"sf_ems_{year}_raw.parquet"
+    raw.to_parquet(raw_path, index=False)
+
+    info = {
+        "source": API_URL,
+        "filter": where,
+        "columns": COLUMNS,
+        "extracted_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "data_as_of_max": raw["data_as_of"].max(),
+        "rows": len(raw),
+    }
+    info_path = data_dir / f"sf_ems_{year}_info.json"
+    info_path.write_text(json.dumps(info, indent=2), encoding="utf-8")
+    return raw_path
 
 
 def _coordinates(location) -> tuple[float, float]:
