@@ -6,7 +6,17 @@ SecondsMatter is a NOVA IMS BSc Data Science Capstone Project (2026/2027, four-p
 
 **Safety boundary:** this is an academic simulation, **not a real dispatch system**. It must not send real dispatch instructions, determine clinical priority, claim operational readiness, or present synthetic results as real-world performance. A human stays in control of every simulated decision, and simulated information is labelled as such.
 
-## 2. Course rules and deadlines
+## 2. Teaching mode: how to work with the team
+
+The team are students **learning** while they build this project. Never assume they know what to do next, why it matters, or how it works. Every step must be explained so that any member can defend it at the defence.
+
+1. **Recommend the next step.** Name the single best next step, why it is the best one now (linked to the required components, the deadlines and the MVP), and what is deliberately left for later. For a new step, wait for the user's agreement before starting.
+2. **Explain how before doing.** Say which files will change, the approach, and any new concept in plain language. Explain a technical term the first time it is used.
+3. **Keep steps small.** Do one step at a time, small enough to review and understand. Never chain several steps without checking in. Stop after each step.
+4. **Explain the code.** For anything longer than a few lines, give a brief explanation: the main idea, the key functions, and why this design. Add code comments only where the logic is not obvious.
+5. **Close each step.** Say what changed, how to run or test it, what to understand in order to defend it, and the recommended next step.
+
+## 3. Course rules and deadlines
 
 The course documents in `docs/reference/` take precedence over this file: `Project_Guidelines.pdf`, `Technical_Proposal_Guidelines.pdf`, `Proposal_Week_03.pdf` and the team's initial `SecondsMatter_Proposal.pdf`, which is a starting concept, not a commitment. `README_TEMPLATE.md` is referenced by the guidelines but not yet in the repo. Do not invent requirements or assume instructor approval; ask the team when unsure.
 
@@ -19,7 +29,7 @@ The course documents in `docs/reference/` take precedence over this file: `Proje
 - **Defence:** an investor-style pitch and live demo, then technical questions to any member about any part of the code, including AI-written code.
 - Technical choices outside what is taught in class need the instructor's agreement **before** building on them.
 
-## 3. Required components and acceptance checks
+## 4. Required components and acceptance checks
 
 1. **AI integration:** the model does real work. Any output the code acts on comes back as validated structured output, never parsed text.
 2. **Conversational agent:** a multi-turn conversation that uses earlier context. The agent **chooses** tools and chains calls; a fixed code-driven workflow does not count.
@@ -42,7 +52,7 @@ The course documents in `docs/reference/` take precedence over this file: `Proje
 
 **Before submitting:** clone into an empty folder and follow the README.
 
-## 4. Data
+## 5. Data
 
 - Source: DataSF dataset `nuek-vuh3`, SF Fire Department and EMS Dispatched Calls for Service (`https://data.sf.gov/resource/nuek-vuh3.json`).
 - Rows are **unit responses**, not incidents. A January 2025 audit found 33,196 response rows for 16,374 incidents. **Never count response rows as demand**: deduplicate at incident level, and keep a separate response table for resource analysis.
@@ -52,7 +62,7 @@ The course documents in `docs/reference/` take precedence over this file: `Proje
 - Use reproducible, date-scoped API extracts saved as local snapshots, never a full download at app startup. Record the source, extraction date, filters, transformations and quality checks. Data files stay out of Git (`data/`).
 - San Francisco patterns do not transfer to Lisbon. A Lisbon scenario must be labelled as an assumption-driven demonstration.
 
-## 5. MVP and stack
+## 6. MVP and stack
 
 Build one end-to-end interaction first:
 1. The user describes a simulated emergency.
@@ -73,7 +83,7 @@ Use simple baselines before any optimisation.
 
 Add a dependency only when a feature uses it. Avoid unneeded frameworks and infrastructure. The demo must not depend on a live external data request.
 
-## 6. Repository layout and commands
+## 7. Repository layout and commands
 
 The repository root holds only these files: `README.md`, `CLAUDE.md`, `streamlit_app.py`, `pyproject.toml`, `uv.lock`, `.env.example` and `.gitignore`. Everything else lives in a folder:
 
@@ -93,7 +103,7 @@ uv run streamlit run streamlit_app.py    # run the app
 uv run pytest                            # run the tests
 ```
 
-## 7. Working rules
+## 8. Working rules
 
 - **Git:** commit directly to `main`. No feature branches, pull requests or colleague review are required. Pull before starting, and write short commit messages in English. Claude asks the user in chat before committing or pushing.
 - **Language:** code, docs and commit messages are in English. When a team member writes in Portuguese, reply in Portuguese.
