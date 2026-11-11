@@ -13,7 +13,7 @@ NOVA IMS BSc Data Science Capstone Project, 2026/2027.
 
 ## Setup from a fresh clone
 
-Requirements: [uv](https://docs.astral.sh/uv/) and Python 3.12.
+Requirements: [uv](https://docs.astral.sh/uv/). It installs Python 3.12 automatically if it is missing.
 
 ```bash
 git clone https://github.com/pedromariaanf-a11y/Projeto-de-curso.git
@@ -21,6 +21,11 @@ cd Projeto-de-curso
 uv sync
 cp .env.example .env   # then fill in ANTHROPIC_API_KEY
 ```
+
+**About the environment.** `uv sync` creates `.venv/`, a private Python 3.12 with the exact
+library versions from `uv.lock`, separate from any other Python on your computer. Run it again
+after every `git pull`. `uv run <command>` runs a command inside `.venv`, so there is no need to
+activate it; calling `python` or `pip` directly may use a different Python.
 
 ## Run
 

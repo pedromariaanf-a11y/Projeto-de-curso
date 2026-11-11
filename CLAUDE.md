@@ -34,7 +34,7 @@ The course documents in `docs/reference/` take precedence over this file: `Proje
 1. **AI integration:** the model does real work. Any output the code acts on comes back as validated structured output, never parsed text.
 2. **Conversational agent:** a multi-turn conversation that uses earlier context. The agent **chooses** tools and chains calls; a fixed code-driven workflow does not count.
 3. **Tools:** team-written functions that read or change app state, each documented in `docs/TOOLS.md` (purpose, parameters, return value, failures). Failures return a result the agent can act on. Safe transient failures are retried. A tool that deletes or overwrites asks the user first unless the change can be undone.
-4. **Documents:** user-provided documents (e.g., operational rules as PDF or text) are used meaningfully, with attribution. An upload control that does nothing does not count.
+4. **Documents:** the app reads documents (e.g., operational rules as PDF or text) and uses their content for something the user cares about, as a core feature or to ground answers. An upload control that does nothing does not count. Team choice, beyond the course: answers cite the document they used.
 5. **Layered architecture:** interface, logic, AI provider access, tools, configuration, prompts and schemas are kept apart. The interface never builds prompts or makes decisions, and changing the model means editing one line.
 6. **Tracing:** one trace per user request, including in the deployed app, with a span for every model and tool call. Each trace shows the model, latency, tokens, errors and handled failures, the outcome and the conversation ID. Document whether prompts and responses are logged and how long traces are kept. The team must be able to open the trace of a failure it found and show what it changed because of it.
 
@@ -60,6 +60,7 @@ The course documents in `docs/reference/` take precedence over this file: `Proje
 - Incident coordinates are not vehicle GPS positions. The data does not show full rosters, shifts or availability.
 - Keep **observed facts**, **derived estimates** and **synthetic assumptions** separate in data, API responses, UI and evaluation.
 - Use reproducible, date-scoped API extracts saved as local snapshots, never a full download at app startup. Record the source, extraction date, filters, transformations and quality checks. Data files stay out of Git (`data/`).
+- The dataset is live and updated daily, so record each snapshot's extraction date and the source's `data_as_of`. The API's column set varies between queries (36 or 37 columns), so extracts use an explicit column list. Timestamps are local San Francisco time without a time zone; take care around daylight-saving changes.
 - San Francisco patterns do not transfer to Lisbon. A Lisbon scenario must be labelled as an assumption-driven demonstration.
 
 ## 6. MVP and stack
@@ -112,6 +113,7 @@ uv run pytest                            # run the tests
 - Credentials come from environment variables, and `.env.example` lists names only. **Never commit secrets or `.env`.**
 - No destructive commands, paid resources or large downloads without explicit approval.
 - After each change, report which files changed, how to run or test them, what was verified, and the known limitations.
+- After each finished step, update `docs/DEVELOPMENT_STATUS.md` (completed work, current status, next recommended step).
 - Prefer readable, explainable code. Every member must be able to defend every line.
 
 **A small, complete, deployed, well-tested application beats an ambitious broken one.**

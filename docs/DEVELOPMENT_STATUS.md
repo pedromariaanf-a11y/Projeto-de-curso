@@ -1,6 +1,6 @@
 # Development Status
 
-_Last updated: 2026-11-11 (commit `db90f6e`). Update this file whenever a step is finished._
+_Last updated: 2026-11-11 (after the repository audit). Update this file whenever a step is finished._
 
 Only work that can be checked in the repository is listed as done.
 
@@ -36,6 +36,11 @@ Only work that can be checked in the repository is listed as done.
   - January 2025 extract from DataSF `nuek-vuh3`: 33,196 response rows, 16,374 incidents, 228 units.
   - Candidate ambulance types: `MEDIC`, `BLS` and `PRIVATE`.
   - Quality checks: 1 missing `available_dttm` and 85 negative busy durations.
+  - Key checks (API, 2026-11-11): `rowid` is unique, each incident has exactly one call, no unit appears twice in a call, and 5 rows lack coordinates or unit type.
+- **Dataset facts** (API, 2026-11-11)
+  - The dataset is live and updated daily: 7,494,957 rows, `data_as_of` 2026-11-11. A snapshot must record its extraction date and `data_as_of`.
+  - The API returns 36 or 37 columns depending on the query (the `:@computed_region_…` column can be missing), so an extract needs an explicit column list.
+  - Timestamps are local San Francisco time without a time zone; daylight-saving changes (March, November) need care.
 - **Docs**
   - `README.md` covers setup, run, test, the project layout and the public URL.
   - `CLAUDE.md` holds the project rules and the teaching-mode working style.
@@ -75,13 +80,15 @@ The skeleton is deployed. **None of the six required components is implemented y
 | Model ID in `config.py` | Switching the model means editing one line (a course requirement) |
 | Secrets from environment variables | No keys in Git; `.env` locally, Secrets on Streamlit Cloud |
 | Commit directly to `main` | Team decision; only `main` counts for grading |
+| SF DataSF data instead of NYC EMS data (Week 3 proposal) | SF has one row per unit response, needed to compare units; NYC EMS data is incident-level only |
 | Add libraries only when a feature uses them | Keeps the setup small and explainable |
 
 ## Known issues and limitations
 
 - No API key is set on the deployed app, so the sidebar shows "ANTHROPIC_API_KEY is not set". This is expected until the agent exists.
 - `README_TEMPLATE.md`, referenced by the guidelines, is not in the repository.
-- The notebook uses `requests` and `pandas`, which are not project dependencies, so it does not run inside the `uv` environment yet.
+- The notebook uses `requests` and `pandas`. They are installed in `.venv` only as indirect dependencies of Streamlit, not as direct, pinned project dependencies. The project environment has no Jupyter kernel (`ipykernel`), and the notebook was run on a personal environment ("PDC"), so it does not run inside the `uv` environment yet.
+- No written instructor feedback on the Week 3 proposal has been received; section 3 of the technical proposal must say so.
 - The data audit covers January 2025 only; its quality findings are not general.
 - The dataset has no fleet rosters, shifts or vehicle GPS positions, so availability will be simulated.
 
