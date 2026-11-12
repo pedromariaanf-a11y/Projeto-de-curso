@@ -1,8 +1,9 @@
 # Development Status
 
-_Last updated: 2026-11-11 (after the 2025 data extract). Update this file whenever a step is finished._
+_Last updated: 2026-11-12. Update this file whenever a step is finished._
 
-Only work that can be checked in the repository is listed as done.
+This file records what is done, what is open and what comes next. Course requirements are
+in `docs/COURSE.md`; data notes are in `docs/DATA.md`.
 
 ## Deadlines
 
@@ -11,91 +12,55 @@ Only work that can be checked in the repository is listed as done.
 | Technical proposal (`TeamName_TechnicalProposal.pdf`) | 6 Dec 2026, 23:59 | Not started |
 | Final submission (repo + Moodle zip) | 3 Jan 2027, 23:59 | In progress |
 
-## Completed work
+## Done
 
-- **Repository setup**
-  - The course documents are in `docs/reference/`.
-  - `.gitignore` excludes `.env`, `.venv/` and `data/`.
-  - The root contains only the essential files.
-- **Packaging**
-  - The `uv` project uses Python 3.12, with exact pins (`streamlit==1.67.0`, `python-dotenv==1.2.4`, `pandas==3.1.1`, `pyarrow==26.0.1`, `requests==2.34.2`, and `pytest==9.2.0` for development) and a committed `uv.lock`.
-- **Configuration layer** (`src/secondsmatter/config.py`)
-  - Settings are read from environment variables.
-  - The model ID is set in one line (`LLM_MODEL = "claude-opus-5-5"`).
-  - The API key is checked for presence but never stored.
-- **Interface** (`streamlit_app.py`)
-  - The page shows the AI-interaction disclosure (EU AI Act Art. 50) and the "academic simulation only" warning.
-  - The sidebar shows the model and whether the key is configured.
-  - The chat input is disabled.
-- **Tests**
-  - `tests/test_config.py`: 2 tests for the configuration.
-  - `tests/test_data.py`: 4 offline tests for the data layer.
-  - All 6 pass with `uv run pytest`.
-- **Deployment**
-  - The app is public at https://secondsmatter.streamlit.app/ (Streamlit Community Cloud, `main` branch, Python 3.12).
-  - Every push to `main` redeploys it.
-- **Data exploration** (`notebooks/01_explore_sf_ems_api.ipynb`)
-  - January 2025 extract from DataSF `nuek-vuh3`: 33,196 response rows, 16,374 incidents, 228 units.
-  - Candidate ambulance types: `MEDIC`, `BLS` and `PRIVATE`.
-  - Quality checks: 1 missing `available_dttm` and 85 negative busy durations.
-  - Key checks (API, 2026-11-11): `rowid` is unique, each incident has exactly one call, no unit appears twice in a call, and 5 rows lack coordinates or unit type.
-- **Dataset facts** (API, 2026-11-11)
-  - The dataset is live and updated daily: 7,494,957 rows, `data_as_of` 2026-11-11. A snapshot must record its extraction date and `data_as_of`.
-  - The API returns 36 or 37 columns depending on the query (the `:@computed_region_…` column can be missing), so an extract needs an explicit column list.
-  - Timestamps are local San Francisco time without a time zone; daylight-saving changes (March, November) need care.
-- **Data extract** (`src/secondsmatter/data.py`, run with `uv run python -m secondsmatter.data 2025`)
-  - 2025 snapshot (extracted 2026-11-11): 369,089 response rows, 183,325 incidents, matching the API. Quality results are in `data/sf_ems_2025_info.json`.
-  - Ambulances (assumption: `MEDIC`, `BLS`, `PRIVATE`): 124 units; median 8.2 min from dispatch to on scene, 70.2 min busy.
-- **Docs**
-  - `README.md` covers setup, run, test, the project layout, the public URL and how to build the data.
-  - `CLAUDE.md` holds the project rules and the teaching-mode working style.
+- **Packaging:** `uv` + Python 3.12, exact pins, `uv.lock` committed.
+- **Config** (`src/secondsmatter/config.py`): the model ID is one line; the API key is checked for presence but never stored.
+- **Interface** (`streamlit_app.py`): AI-interaction disclosure (EU AI Act Art. 50) and the "academic simulation only" warning. Chat input still disabled.
+- **Deployed:** https://secondsmatter.streamlit.app/ — every push to `main` redeploys.
+- **Data** (`src/secondsmatter/data.py`, `uv run python -m secondsmatter.data 2025`): downloads one year from DataSF `nuek-vuh3` and builds two local Parquet tables in `data/` (not in Git). 2025 snapshot: **369,089 responses** (one row per unit sent) and **183,325 incidents** (one row per emergency), matching the API's own counts. Of the responses, 124 distinct ambulance units; median 8.2 min dispatch-to-on-scene and 70.2 min busy. Provenance and quality go to `data/sf_ems_2025_info.json`.
+- **Tests:** 3, passing with `uv run pytest`.
 
-## Current status
+## Required components
 
-The skeleton is deployed. **None of the six required components is implemented yet.**
-
-| Required component | Status |
+| Component | Status |
 |---|---|
 | 1. AI integration (structured output) | Not started: no model SDK in the dependencies |
 | 2. Conversational agent | Not started: chat input disabled |
 | 3. Tools + `docs/TOOLS.md` | Not started |
 | 4. Documents | Not started |
-| 5. Layered architecture | Started: separate config, data and interface layers |
+| 5. Layered architecture | Started: config, data and interface are separate |
 | 6. Tracing | Not started |
-| Evaluation set (10–20 cases) | Not started |
+| Evaluation set (10–20 cases) | Recommended, not required — see Open questions |
 | `docs/ARCHITECTURE.md` | Not started |
 
-## Pending tasks (priority order)
+## Known limitations
 
-1. **Simulation:** a synthetic fleet, plus deterministic eligibility, ETA and coverage calculations, with tests.
-2. **Agent:** an Anthropic SDK tool loop with the first tools and structured outputs.
-3. **Tracing:** Langfuse spans for model and tool calls, from the first agent interaction.
-4. **Document use:** an uploaded operational-rules document that the agent consults.
-5. **Documentation:** `docs/TOOLS.md`, `docs/ARCHITECTURE.md`, and the evaluation set with a scoring script.
-6. **Technical proposal:** write it in parallel; due 6 Dec.
+- Ambulance types (`MEDIC`, `BLS`, `PRIVATE`) are an **unverified assumption**; `als_unit` is the observed field.
+- 1,326 of 369,089 responses (0.4%) have impossible negative durations, stored as empty. Quality findings are for 2025 only.
+- The source has no fleet rosters, shifts or vehicle GPS, so unit availability will be **simulated**.
+- No API key on the deployed app, so the sidebar says the key is not set. Expected until the agent exists.
+- No written instructor feedback on the Week 3 proposal; section 3 of the technical proposal must say so.
+- `notebooks/01_explore_sf_ems_api.ipynb` does not run inside the `uv` environment (no `ipykernel`). Its logic now lives in `data.py`; it is kept only as a record of the first exploration.
 
-## Technical decisions
+## Open questions
 
-| Decision | Reason |
+Choices that are **not** decided. They used to sit in `CLAUDE.md` as if they were
+settled; they belong here until the team picks one and tries it. Record the answer under
+"Done" once it works.
+
+| Question | Notes |
 |---|---|
-| Python 3.12 + `uv` + `uv.lock` | Exact pins are required by the guidelines, and Streamlit Cloud installs from `uv.lock` |
-| Streamlit + Streamlit Community Cloud | Taught in class, free public URL, redeploys on every push |
-| `src/` package layout | Lets the app and the tests import the same code; the interface stays separate from the logic |
-| Model ID in `config.py` | Switching the model means editing one line (a course requirement) |
-| Secrets from environment variables | No keys in Git; `.env` locally, Secrets on Streamlit Cloud |
-| Commit directly to `main` | Team decision; only `main` counts for grading |
-| SF DataSF data instead of NYC EMS data (Week 3 proposal) | SF has one row per unit response, needed to compare units; NYC EMS data is incident-level only |
-| Add libraries only when a feature uses them | Keeps the setup small and explainable |
+| Tracing provider | Langfuse Cloud EU was pencilled in but never tried. Nothing installed yet. |
+| Evaluation set | The course only recommends it. Build 10–20 cases, or skip? |
+| Document grounding | Must answers cite which document they used, or is reading it enough? |
+| Trace privacy | Do we log prompts and responses, and for how long do traces live? |
+| Persistent state | Parquet snapshots work for data. Is SQLite needed for anything? |
+| Architecture layers | How many layers the course requirement actually needs here. |
+| Tool failure handling | Which failures are retried, and how many times. |
+| Planning scope | Are demand forecasting and relocations in scope at all, or dispatch only? |
+| MVP interaction | The exact end-to-end flow the demo shows — to be designed, not assumed. |
 
-## Known issues and limitations
+## Next step
 
-- No API key is set on the deployed app, so the sidebar shows "ANTHROPIC_API_KEY is not set". This is expected until the agent exists.
-- `README_TEMPLATE.md`, referenced by the guidelines, is not in the repository.
-- The notebook was run on a personal environment ("PDC"); the project environment has no Jupyter kernel (`ipykernel`). Its logic now lives in `src/secondsmatter/data.py`, so the notebook is kept only as a record of the first exploration.
-- No written instructor feedback on the Week 3 proposal has been received; section 3 of the technical proposal must say so.
-- Quality findings are for 2025 only; another year must be checked again.
-- The dataset has no fleet rosters, shifts or vehicle GPS positions, so availability will be simulated.
-
-## Next recommended step
-
-**Simulation (task 1).** A synthetic fleet built from the real 2025 ambulance units, plus deterministic eligibility, ETA and coverage calculations, with tests. It also decides which small summary tables the deployed app reads; those are committed, with a one-line exception added to `CLAUDE.md`. The agent's tools (task 2) need these calculations.
+**Simulation:** a synthetic fleet built from the real 2025 ambulance units, plus deterministic eligibility, ETA and coverage-impact calculations, with tests. It also decides which small summary tables the deployed app reads (those get committed, with a one-line exception added to `CLAUDE.md`). The agent's tools need these numbers before the agent itself is worth building.
