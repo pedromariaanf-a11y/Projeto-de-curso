@@ -6,9 +6,8 @@ Times are kept as local San Francisco time without a time zone, as the source
 gives them.
 """
 
-import argparse
 import json
-import time
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -18,9 +17,6 @@ import requests
 API_URL = "https://data.sf.gov/resource/nuek-vuh3.json"
 DATA_DIR = Path("data")
 PAGE_SIZE = 50_000
-MAX_ATTEMPTS = 3
-RETRY_WAIT_SECONDS = 2
-RETRY_STATUS = {429, 500, 502, 503, 504}  # "too many requests" and server errors
 
 # The columns requested from the API. A fixed list, because the API's own
 # column set varies between queries. The street address is left out on purpose.
@@ -39,19 +35,11 @@ TIME_COLUMNS = [c for c in COLUMNS if c.endswith("_dttm")]
 AMBULANCE_TYPES = ("MEDIC", "BLS", "PRIVATE")
 
 
-def _get_json(session, params: dict) -> list[dict]:
-    """One API request, retried when the failure is temporary and safe to repeat."""
-    for attempt in range(1, MAX_ATTEMPTS + 1):
-        try:
-            response = session.get(API_URL, params=params, timeout=120)
-            if response.status_code not in RETRY_STATUS:
-                response.raise_for_status()  # other errors (e.g. a bad query) stop at once
-                return response.json()
-        except (requests.Timeout, requests.ConnectionError):
-            pass
-        if attempt < MAX_ATTEMPTS:
-            time.sleep(RETRY_WAIT_SECONDS * attempt)
-    raise RuntimeError(f"DataSF did not respond after {MAX_ATTEMPTS} attempts")
+def _get(session, params: dict) -> list[dict]:
+    """One API request. Any failure stops the download; run it again."""
+    response = session.get(API_URL, params=params, timeout=120)
+    response.raise_for_status()
+    return response.json()
 
 
 def _as_text(value):
@@ -73,13 +61,13 @@ def download(year: int, data_dir: Path = DATA_DIR, session=None) -> Path:
         f"AND received_dttm < '{year + 1}-01-01T00:00:00'"
     )
 
-    expected = int(_get_json(session, {"$select": "count(*) as n", "$where": where})[0]["n"])
+    expected = int(_get(session, {"$select": "count(*) as n", "$where": where})[0]["n"])
     if expected == 0:
         raise RuntimeError(f"No rows found for {year}")
 
     rows = []
     while len(rows) < expected:
-        page = _get_json(session, {
+        page = _get(session, {
             "$select": ",".join(COLUMNS),
             "$where": where,
             "$order": "rowid",  # a stable order, so pages never overlap or skip rows
@@ -123,10 +111,6 @@ def _coordinates(location) -> tuple[float, float]:
     return latitude, longitude
 
 
-def _minutes(start: pd.Series, end: pd.Series) -> pd.Series:
-    return (end - start).dt.total_seconds() / 60
-
-
 def make_tables(raw: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
     """Build (incidents, responses, quality) from raw rows stored as text.
 
@@ -140,11 +124,10 @@ def make_tables(raw: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
     responses = raw[COLUMNS].copy()
 
     # Text -> real dates. A time that cannot be read becomes empty (NaT).
-    unreadable_times = 0
     for column in TIME_COLUMNS:
-        parsed = pd.to_datetime(responses[column], format="ISO8601", errors="coerce")
-        unreadable_times += int((parsed.isna() & responses[column].notna()).sum())
-        responses[column] = parsed
+        responses[column] = pd.to_datetime(
+            responses[column], format="ISO8601", errors="coerce"
+        )
 
     responses["als_unit"] = responses["als_unit"] == "true"  # observed
     responses["is_ambulance"] = responses["unit_type"].isin(AMBULANCE_TYPES)  # assumption
@@ -156,17 +139,15 @@ def make_tables(raw: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
     responses["longitude"] = [lon for _, lon in points]
     responses = responses.rename(columns={"neighborhoods_analysis_boundaries": "neighborhood"})
 
-    # Derived durations. Negative ones are impossible, so they become empty.
-    to_on_scene = _minutes(responses["dispatch_dttm"], responses["on_scene_dttm"])
-    busy = _minutes(responses["dispatch_dttm"], responses["available_dttm"])
+    # Derived durations, in minutes. Negative ones are impossible, so they become empty.
+    to_on_scene = (
+        responses["on_scene_dttm"] - responses["dispatch_dttm"]
+    ).dt.total_seconds() / 60
+    busy = (
+        responses["available_dttm"] - responses["dispatch_dttm"]
+    ).dt.total_seconds() / 60
     responses["minutes_to_on_scene"] = to_on_scene.where(to_on_scene >= 0)
     responses["minutes_busy"] = busy.where(busy >= 0)
-
-    # An incident "conflicts" when its rows disagree on call type or location.
-    distinct = responses.groupby("incident_number")[["call_type", "case_location"]].nunique(
-        dropna=False
-    )
-    conflicting = int((distinct > 1).any(axis=1).sum())
 
     responses = responses.drop(columns=["case_location", "data_as_of"])
 
@@ -191,15 +172,10 @@ def make_tables(raw: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
 
     quality = {
         "rows": len(responses),
-        "unique_rowids": int(responses["rowid"].nunique()),
         "incidents": len(incidents),
         "missing_coordinates": int(responses["latitude"].isna().sum()),
-        "missing_unit_type": int(responses["unit_type"].isna().sum()),
         "missing_available_dttm": int(raw["available_dttm"].isna().sum()),
-        "unreadable_times": unreadable_times,
-        "negative_minutes_to_on_scene": int((to_on_scene < 0).sum()),
-        "negative_minutes_busy": int((busy < 0).sum()),
-        "incidents_with_conflicting_details": conflicting,
+        "negative_durations": int(((to_on_scene < 0) | (busy < 0)).sum()),
     }
     return incidents, responses, quality
 
@@ -221,21 +197,18 @@ def build_tables(year: int, data_dir: Path = DATA_DIR) -> dict:
     return quality
 
 
-def main(argv: list[str] | None = None) -> None:
+def main() -> None:
     """Command line: `uv run python -m secondsmatter.data 2025`."""
-    parser = argparse.ArgumentParser(
-        description="Download one year of DataSF records (if needed) and build the tables."
-    )
-    parser.add_argument("year", type=int, help="calendar year, e.g. 2025")
-    year = parser.parse_args(argv).year
+    if len(sys.argv) != 2:
+        raise SystemExit("Usage: python -m secondsmatter.data <year>, e.g. 2025")
+    year = int(sys.argv[1])
 
     raw_path = DATA_DIR / f"sf_ems_{year}_raw.parquet"
     if raw_path.exists():
         print(f"Using {raw_path} (delete it to download fresh data)")
     else:
         download(year)
-    quality = build_tables(year)
-    print(json.dumps(quality, indent=2))
+    print(json.dumps(build_tables(year), indent=2))
 
 
 if __name__ == "__main__":

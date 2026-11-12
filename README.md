@@ -7,7 +7,7 @@ NOVA IMS BSc Data Science Capstone Project, 2026/2027.
 > emergency dispatch system. It does not send dispatch instructions or assess clinical
 > priority, and its fleet availability is simulated. Users interact with an AI system.
 
-**Status:** project skeleton. The agent, tools, data pipeline and tracing are not built yet.
+**Status:** early development. The data layer works; the agent, tools and tracing are not built yet.
 
 **Public URL:** https://secondsmatter.streamlit.app/
 
@@ -45,7 +45,9 @@ uv run pytest
 |---|---|
 | `streamlit_app.py` | Interface only: renders the page and calls `src/secondsmatter/` |
 | `src/secondsmatter/config.py` | Settings from environment variables, including the model ID |
+| `src/secondsmatter/data.py` | Downloads DataSF records and builds the incident and response tables |
 | `tests/` | Automated tests |
+| `docs/DEVELOPMENT_STATUS.md` | What is done, what is missing, next step |
 | `notebooks/` | Exploratory analysis (reusable code moves to `src/`) |
 | `docs/reference/` | Course guidelines and project proposals |
 | `pyproject.toml`, `uv.lock` | Dependencies pinned with uv (must stay at the root) |
