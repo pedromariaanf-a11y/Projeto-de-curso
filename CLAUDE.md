@@ -66,7 +66,8 @@ dependency only when a feature uses it.
 ## Working rules
 
 - **Git:** commit directly to `main`; no branches or pull requests. Pull before starting.
-  Short commit messages in English. Ask in chat before committing or pushing.
+  Short commit messages in English, with no AI co-author trailer. Ask in chat before
+  committing or pushing.
 - **Language:** code, docs and commit messages in English. Reply in Portuguese when a
   team member writes in Portuguese.
 - Inspect the repo before changing it; don't assume files exist.

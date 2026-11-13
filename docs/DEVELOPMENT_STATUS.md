@@ -66,6 +66,8 @@ settled; they belong here until the team picks one and tries it. Record the answ
 | Tool failure handling | Which failures are retried, and how many times. |
 | Planning scope | Are demand forecasting and relocations in scope at all, or dispatch only? |
 | MVP interaction | The exact end-to-end flow the demo shows — to be designed, not assumed. |
+| Frontend & deployment | Raised in class on 13 Nov 2026: a non-Streamlit frontend and another way of deploying are valued. The guidelines make Interface and Deployment both "any", and require agreeing any choice outside what is taught with the instructor **before** building on it. Shapes considered: a FastAPI backend with Streamlit as a thin HTTP client (all Python, lowest risk); the same backend with Dash or NiceGUI; the same backend with a hand-written HTML/JS page (the team is Python-only, so the hardest to defend). One repository with `backend/` and `frontend/`, not two repositories, because the submission is one repo plus one zip. Parked until the feature scope is decided. |
+| Data source vs. proposal | The Week 3 proposal names NYC EMS and Lisbon INEM data; the repo uses San Francisco `nuek-vuh3`. "Technical proposal against delivery" is graded, so section 7 must state San Francisco and say why it changed. |
 
 ## Next step
 
