@@ -1,6 +1,6 @@
 # Development Status
 
-_Last updated: 2026-11-12. Update this file whenever a step is finished._
+_Last updated: 2026-11-13. Update this file whenever a step is finished._
 
 This file records what is done, what is open and what comes next. Course requirements are
 in `docs/COURSE.md`; data notes are in `docs/DATA.md`.
@@ -24,7 +24,8 @@ in `docs/COURSE.md`; data notes are in `docs/DATA.md`.
   uv sync --group notebooks
   uv run python -m ipykernel install --user --name secondsmatter --display-name "SecondsMatter (uv)"
   ```
-- **Tests:** 3, passing with `uv run pytest`.
+- **Fleet table** (`make_fleet` in `data.py`, saved as `data/fleet_2025.parquet`): one row per ambulance unit with its type, responses, `als_share`, first/last seen and median durations, all measured from 2025. Nothing simulated yet; findings in `docs/DATA.md`.
+- **Tests:** 4, passing with `uv run pytest`.
 
 ## Required components
 

@@ -180,8 +180,30 @@ def make_tables(raw: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
     return incidents, responses, quality
 
 
+def make_fleet(responses: pd.DataFrame) -> pd.DataFrame:
+    """One row per ambulance unit, measured from its 2025 responses (nothing simulated).
+
+    The data has no home base for a unit, and the care level belongs to the shift,
+    not the vehicle, so `als_share` is the share of responses with advanced care.
+    """
+    ambulances = responses[responses["is_ambulance"]]
+    return (
+        ambulances.groupby("unit_id", as_index=False)
+        .agg(
+            unit_type=("unit_type", "first"),
+            responses=("unit_id", "size"),
+            als_share=("als_unit", "mean"),  # True counts as 1, so the mean is the share
+            first_seen=("dispatch_dttm", "min"),
+            last_seen=("dispatch_dttm", "max"),
+            median_minutes_to_on_scene=("minutes_to_on_scene", "median"),
+            median_minutes_busy=("minutes_busy", "median"),
+        )
+        .sort_values("responses", ascending=False, ignore_index=True)
+    )
+
+
 def build_tables(year: int, data_dir: Path = DATA_DIR) -> dict:
-    """Raw file -> incidents and responses Parquet files; quality saved in the info file."""
+    """Raw file -> incidents, responses and fleet Parquet files; quality saved in the info file."""
     raw_path = data_dir / f"sf_ems_{year}_raw.parquet"
     if not raw_path.exists():
         raise FileNotFoundError(f"{raw_path} not found; download the data first")
@@ -189,6 +211,7 @@ def build_tables(year: int, data_dir: Path = DATA_DIR) -> dict:
     incidents, responses, quality = make_tables(pd.read_parquet(raw_path))
     incidents.to_parquet(data_dir / f"incidents_{year}.parquet", index=False)
     responses.to_parquet(data_dir / f"responses_{year}.parquet", index=False)
+    make_fleet(responses).to_parquet(data_dir / f"fleet_{year}.parquet", index=False)
 
     info_path = data_dir / f"sf_ems_{year}_info.json"
     info = json.loads(info_path.read_text(encoding="utf-8")) if info_path.exists() else {}

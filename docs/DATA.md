@@ -36,6 +36,13 @@ a smaller scale: 33,196 response rows for 16,374 incidents.
 - Incident coordinates are **not** vehicle GPS positions.
 - There are no fleet rosters, shifts or availability, so unit availability has to be
   simulated.
+- A unit has no home base. In 2025 a unit's most common station area covers only 16% of
+  its responses (median), so a "home area" cannot be derived; start positions must be
+  simulated.
+- Care level belongs to the shift, not the vehicle: 53 of the 124 ambulance units switch
+  between ALS and non-ALS. `data/fleet_2025.parquet` therefore stores `als_share`.
+- 124 ambulance IDs appear in 2025, but about 66 are dispatched on a typical day (41 MEDIC,
+  18 PRIVATE, 7 BLS). 27 IDs have fewer than 50 responses, some only one.
 
 ## Unverified assumptions
 
