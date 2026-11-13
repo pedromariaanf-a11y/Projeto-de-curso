@@ -19,6 +19,11 @@ in `docs/COURSE.md`; data notes are in `docs/DATA.md`.
 - **Interface** (`streamlit_app.py`): AI-interaction disclosure (EU AI Act Art. 50) and the "academic simulation only" warning. Chat input still disabled.
 - **Deployed:** https://secondsmatter.streamlit.app/ — every push to `main` redeploys.
 - **Data** (`src/secondsmatter/data.py`, `uv run python -m secondsmatter.data 2025`): downloads one year from DataSF `nuek-vuh3` and builds two local Parquet tables in `data/` (not in Git). 2025 snapshot: **369,089 responses** (one row per unit sent) and **183,325 incidents** (one row per emergency), matching the API's own counts. Of the responses, 124 distinct ambulance units; median 8.2 min dispatch-to-on-scene and 70.2 min busy. Provenance and quality go to `data/sf_ems_2025_info.json`.
+- **Notebooks:** `ipykernel==7.4.0` in its own `notebooks` group, not in `dev`, so a plain `uv sync` (what the deployment runs) leaves the 22-package Jupyter stack out. `notebooks/01_explore_sf_ems_api.ipynb` asks for the kernel **SecondsMatter (uv)**, which points at `.venv`, so notebooks use the project's own package versions. The kernel is registered per machine, so each member runs these two commands once:
+  ```
+  uv sync --group notebooks
+  uv run python -m ipykernel install --user --name secondsmatter --display-name "SecondsMatter (uv)"
+  ```
 - **Tests:** 3, passing with `uv run pytest`.
 
 ## Required components
@@ -41,7 +46,7 @@ in `docs/COURSE.md`; data notes are in `docs/DATA.md`.
 - The source has no fleet rosters, shifts or vehicle GPS, so unit availability will be **simulated**.
 - No API key on the deployed app, so the sidebar says the key is not set. Expected until the agent exists.
 - No written instructor feedback on the Week 3 proposal; section 3 of the technical proposal must say so.
-- `notebooks/01_explore_sf_ems_api.ipynb` does not run inside the `uv` environment (no `ipykernel`). Its logic now lives in `data.py`; it is kept only as a record of the first exploration.
+- `notebooks/01_explore_sf_ems_api.ipynb` is kept only as a record of the first exploration; its logic now lives in `data.py`. Opening it without the two commands above gives a missing-kernel warning.
 
 ## Open questions
 

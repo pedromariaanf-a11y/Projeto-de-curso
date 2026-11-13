@@ -20,6 +20,12 @@ build-backend = "uv_build"
 testpaths = ["tests"]
 
 [dependency-groups]
+# Installed by default (`uv sync`), so the deployed app gets these too.
 dev = [
     "pytest==9.2.0",
+]
+# Not a default group: only `uv sync --group notebooks` installs it, which keeps
+# the Jupyter stack out of the deployment.
+notebooks = [
+    "ipykernel==7.4.0",
 ]
